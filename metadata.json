@@ -1,0 +1,6 @@
+{
+  "name": "Cadet Interactive Leadership & Scenarios",
+  "description": "Interactive Civil Air Patrol training academy with real-world decision scenarios, scene visuals, drill tests, uniform guidance, and personal progress tracking dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
