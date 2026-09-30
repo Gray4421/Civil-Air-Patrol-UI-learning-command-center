@@ -26,8 +26,6 @@ export const CadetOnboardingModal: React.FC<CadetOnboardingModalProps> = ({ isOp
         user.fullName &&
         user.fullName !== 'New Cadet' &&
         user.fullName !== 'Cadet' &&
-        !user.fullName.toLowerCase().includes('jordan') &&
-        !user.fullName.toLowerCase().includes('jordin') &&
         user.fullName !== 'jwilliam4421'
       ) {
         setFullName(user.fullName);

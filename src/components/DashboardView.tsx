@@ -30,6 +30,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateToLesson
     user, 
     isAuthenticated,
     setIsGoogleModalOpen,
+    setIsOnboardingModalOpen,
     toggleGoal, 
     addGoal, 
     toggleFirstYearTask 

@@ -768,7 +768,7 @@ export const UniformInspectorView: React.FC = () => {
                     <span className="font-semibold text-white truncate max-w-[200px]">
                       {activeElement.name}
                     </span>
-                    <span className="text-[#ffc72c] font-mono">PNG Element {activeElement.number}</span>
+                    <span className="text-[#ffc72c] font-mono font-bold">CAP Item #{activeElement.number}</span>
                   </div>
                 </div>
 

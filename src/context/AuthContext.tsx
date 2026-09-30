@@ -140,12 +140,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (candidate) {
-        // Purge any previously fabricated names (e.g. Jordan William, Jordan, jwilliam4421)
+        // Clear any leftover uncompleted prototype placeholder names if onboarding was never completed
         if (
-          candidate.fullName === 'Jordan William' ||
-          candidate.fullName?.toLowerCase().includes('jordan') ||
-          candidate.fullName?.toLowerCase().includes('jordin') ||
-          candidate.fullName === 'jwilliam4421'
+          !candidate.onboardingCompleted &&
+          (candidate.fullName === 'Jordan William' || candidate.fullName === 'jwilliam4421')
         ) {
           candidate.fullName = '';
           candidate.callsign = '';

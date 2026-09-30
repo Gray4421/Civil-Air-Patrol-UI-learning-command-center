@@ -53,7 +53,7 @@ const ACH1_COMMANDS: DrillGameCommand[] = [
     prepCommand: 'Flight',
     execCommand: 'ATTEN-TION!',
     voiceText: 'Flight, ATTENTION!',
-    regulationStandard: 'CAPP 60-34 & AFMAN 36-2203: Heels together on line at a 45-degree angle. Legs straight but knees not locked. Thumbs along trouser seams with hands cupped naturally. Head and eyes fixed directly to the front. Immobile and silent.',
+    regulationStandard: 'CAPP 60-33 & CAPP 60-34: Heels together on line at a 45-degree angle. Legs straight but knees not locked. Thumbs along trouser seams with hands cupped naturally. Head and eyes fixed directly to the front. Immobile and silent.',
     choices: [
       {
         id: 'c1',
