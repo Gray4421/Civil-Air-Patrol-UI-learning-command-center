@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SCENARIOS } from '../data/scenariosData';
-import { Scenario, ScenarioOption } from '../types';
+import { Scenario, ScenarioOption, ScenarioHistoryEntry, ScenarioStageDecision } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { ScenarioHistoryLog } from './ScenarioHistoryLog';
+import { 
+  getScenarioHistory, 
+  saveScenarioHistoryEntry, 
+  deleteScenarioHistoryEntry, 
+  clearScenarioHistory 
+} from '../utils/scenarioHistory';
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -14,8 +21,12 @@ import {
   Compass, 
   ShieldAlert, 
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   BookOpen,
-  Star
+  Star,
+  FileText,
+  Layers
 } from 'lucide-react';
 
 interface ScenariosViewProps {
@@ -24,18 +35,77 @@ interface ScenariosViewProps {
 
 export const ScenariosView: React.FC<ScenariosViewProps> = ({ onNavigateToDashboard }) => {
   const { user, recordScenarioCompletion } = useAuth();
+  const [viewMode, setViewMode] = useState<'board' | 'history'>('board');
+  const [historyLogs, setHistoryLogs] = useState<ScenarioHistoryEntry[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [activeScenario, setActiveScenario] = useState<Scenario | null>(null);
   const [currentStageIndex, setCurrentStageIndex] = useState<number>(0);
   const [selectedOption, setSelectedOption] = useState<ScenarioOption | null>(null);
   const [stageScores, setStageScores] = useState<number[]>([]);
   const [bestChoicesCount, setBestChoicesCount] = useState<number>(0);
+  const [recordedDecisions, setRecordedDecisions] = useState<ScenarioStageDecision[]>([]);
   const [isDebriefing, setIsDebriefing] = useState<boolean>(false);
+  const [isDecisionsPreviewOpen, setIsDecisionsPreviewOpen] = useState<boolean>(false);
   const [lastPromotion, setLastPromotion] = useState<{
     newRankPromoted: boolean;
     newRibbonEarned: string | null;
     newPoints: number;
   } | null>(null);
+
+  // Load local storage-backed scenario history on mount
+  useEffect(() => {
+    const saved = getScenarioHistory();
+    if (saved.length > 0) {
+      setHistoryLogs(saved);
+    } else if (user && Object.keys(user.scenarioResults).length > 0) {
+      // Reconstruct initial history entries from user's scenarioResults if none exist in localStorage
+      const initialLogs: ScenarioHistoryEntry[] = [];
+      Object.entries(user.scenarioResults).forEach(([scId, res]) => {
+        const scenario = SCENARIOS.find((s) => s.id === scId);
+        if (scenario) {
+          const decisions: ScenarioStageDecision[] = scenario.stages.map((stg, idx) => {
+            const best = stg.options.find((o) => o.isBestCourse) || stg.options[0];
+            return {
+              stageIndex: idx,
+              stageTitle: stg.title,
+              promptQuestion: stg.promptQuestion,
+              selectedOptionId: best.id,
+              selectedOptionText: best.text,
+              isBestCourse: best.isBestCourse,
+              scoreModifier: best.scoreModifier,
+              outcomeText: best.outcomeText,
+              referenceQuote: best.referenceQuote,
+              coreValueDemonstrated: best.coreValueDemonstrated,
+            };
+          });
+
+          initialLogs.push({
+            id: 'hist_rec_' + scId,
+            scenarioId: scId,
+            scenarioTitle: scenario.title,
+            scenarioCategory: scenario.category,
+            difficulty: scenario.difficulty,
+            completedAt: res.completedAt || new Date().toISOString(),
+            score: res.score,
+            maxScore: res.maxScore,
+            percentage: Math.round((res.score / res.maxScore) * 100),
+            bestChoicesCount: res.bestChoicesCount,
+            totalStages: res.totalStages,
+            passed: res.passed,
+            earnedHonorCredit: res.earnedHonorCredit,
+            cadetName: user.fullName || user.callsign || 'Cadet',
+            cadetRank: user.currentRankId,
+            decisions,
+          });
+        }
+      });
+
+      if (initialLogs.length > 0) {
+        initialLogs.forEach((l) => saveScenarioHistoryEntry(l));
+        setHistoryLogs(initialLogs);
+      }
+    }
+  }, [user]);
 
   const categories = [
     'All',
@@ -60,7 +130,9 @@ export const ScenariosView: React.FC<ScenariosViewProps> = ({ onNavigateToDashbo
     setSelectedOption(null);
     setStageScores([]);
     setBestChoicesCount(0);
+    setRecordedDecisions([]);
     setIsDebriefing(false);
+    setIsDecisionsPreviewOpen(false);
     setLastPromotion(null);
   };
 
@@ -80,6 +152,22 @@ export const ScenariosView: React.FC<ScenariosViewProps> = ({ onNavigateToDashbo
     const updatedBestCount = bestChoicesCount + (isBest ? 1 : 0);
     setBestChoicesCount(updatedBestCount);
 
+    const currentStage = activeScenario.stages[currentStageIndex];
+    const decision: ScenarioStageDecision = {
+      stageIndex: currentStageIndex,
+      stageTitle: currentStage.title,
+      promptQuestion: currentStage.promptQuestion,
+      selectedOptionId: selectedOption.id,
+      selectedOptionText: selectedOption.text,
+      isBestCourse: selectedOption.isBestCourse,
+      scoreModifier: selectedOption.scoreModifier,
+      outcomeText: selectedOption.outcomeText,
+      referenceQuote: selectedOption.referenceQuote,
+      coreValueDemonstrated: selectedOption.coreValueDemonstrated,
+    };
+    const updatedDecisions = [...recordedDecisions, decision];
+    setRecordedDecisions(updatedDecisions);
+
     if (currentStageIndex + 1 < activeScenario.stages.length) {
       setCurrentStageIndex(currentStageIndex + 1);
       setSelectedOption(null);
@@ -87,6 +175,9 @@ export const ScenariosView: React.FC<ScenariosViewProps> = ({ onNavigateToDashbo
       // Finished all stages
       const totalScore = updatedScores.reduce((a, b) => a + b, 0);
       const maxScore = activeScenario.stages.length * 100;
+      const passed = totalScore >= maxScore * 0.7;
+      const earnedHonorCredit = updatedBestCount === activeScenario.stages.length && passed;
+
       const result = recordScenarioCompletion(
         activeScenario.id,
         totalScore,
@@ -95,6 +186,29 @@ export const ScenariosView: React.FC<ScenariosViewProps> = ({ onNavigateToDashbo
         activeScenario.stages.length
       );
       setLastPromotion(result);
+
+      // Save complete record with decision outcomes to localStorage-backed history log
+      const newHistoryEntry: ScenarioHistoryEntry = {
+        id: 'hist_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        scenarioId: activeScenario.id,
+        scenarioTitle: activeScenario.title,
+        scenarioCategory: activeScenario.category,
+        difficulty: activeScenario.difficulty,
+        completedAt: new Date().toISOString(),
+        score: totalScore,
+        maxScore,
+        percentage: Math.round((totalScore / maxScore) * 100),
+        bestChoicesCount: updatedBestCount,
+        totalStages: activeScenario.stages.length,
+        passed,
+        earnedHonorCredit,
+        cadetName: user?.fullName || user?.callsign || 'Cadet',
+        cadetRank: user?.currentRankId || 'c_ab',
+        decisions: updatedDecisions,
+      };
+
+      const updatedHistory = saveScenarioHistoryEntry(newHistoryEntry);
+      setHistoryLogs(updatedHistory);
       setIsDebriefing(true);
     }
   };
@@ -105,7 +219,27 @@ export const ScenariosView: React.FC<ScenariosViewProps> = ({ onNavigateToDashbo
     setSelectedOption(null);
     setStageScores([]);
     setBestChoicesCount(0);
+    setRecordedDecisions([]);
     setIsDebriefing(false);
+    setIsDecisionsPreviewOpen(false);
+  };
+
+  const handleDeleteHistoryEntry = (id: string) => {
+    const updated = deleteScenarioHistoryEntry(id);
+    setHistoryLogs(updated);
+  };
+
+  const handleClearAllHistory = () => {
+    clearScenarioHistory();
+    setHistoryLogs([]);
+  };
+
+  const handleSelectScenarioFromHistory = (scenarioId: string) => {
+    const found = SCENARIOS.find((s) => s.id === scenarioId);
+    if (found) {
+      handleStartScenario(found);
+      setViewMode('board');
+    }
   };
 
   return (
@@ -413,24 +547,90 @@ export const ScenariosView: React.FC<ScenariosViewProps> = ({ onNavigateToDashbo
                 </div>
               )}
 
+              {/* Local Storage Confirmation Badge */}
+              <div className="p-3 rounded-xl bg-[#06142a] border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Decision outcomes and doctrine references permanently saved to your History Log.</span>
+              </div>
+
+              {/* Collapsible Decisions Preview in Debrief */}
+              {recordedDecisions.length > 0 && (
+                <div className="text-left rounded-xl bg-[#06142a] border border-[#163a70] overflow-hidden">
+                  <button
+                    onClick={() => setIsDecisionsPreviewOpen(!isDecisionsPreviewOpen)}
+                    className="w-full p-3.5 flex items-center justify-between text-xs font-bold text-[#ffc72c] hover:bg-[#002855]/50 transition"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Layers className="w-4 h-4" />
+                      <span>Review Decisions Made This Session ({recordedDecisions.length})</span>
+                    </span>
+                    {isDecisionsPreviewOpen ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </button>
+
+                  {isDecisionsPreviewOpen && (
+                    <div className="p-4 pt-1 space-y-3 border-t border-[#163a70] text-xs">
+                      {recordedDecisions.map((dec) => (
+                        <div
+                          key={dec.stageIndex}
+                          className="p-3 rounded-lg bg-[#0a1e3d] border border-[#163a70] space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between text-[11px] font-bold">
+                            <span className="text-white">Stage {dec.stageIndex + 1}: {dec.stageTitle}</span>
+                            <span
+                              className={`px-2 py-0.5 rounded ${
+                                dec.isBestCourse
+                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-600/50'
+                                  : dec.scoreModifier > 30
+                                  ? 'bg-amber-950 text-amber-300 border border-amber-600/50'
+                                  : 'bg-red-950 text-red-300 border border-red-600/50'
+                              }`}
+                            >
+                              {dec.isBestCourse ? 'Optimal (+100)' : dec.scoreModifier > 30 ? 'Suboptimal (+50)' : 'Error (0)'}
+                            </span>
+                          </div>
+                          <div className="text-slate-300 italic">"{dec.selectedOptionText}"</div>
+                          <div className="text-slate-200 text-[11px] leading-relaxed">
+                            <strong className="text-[#ffc72c]">Outcome: </strong>{dec.outcomeText}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex flex-wrap gap-3 justify-center pt-2">
                 <button
+                  onClick={() => {
+                    setActiveScenario(null);
+                    setViewMode('history');
+                  }}
+                  className="py-2.5 px-5 rounded-xl bg-[#002855] hover:bg-[#003875] text-[#ffc72c] font-bold text-xs border border-[#ffc72c]/40 transition flex items-center gap-2 shadow-md cursor-pointer"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Review in History Log</span>
+                </button>
+                <button
                   onClick={handleRetry}
-                  className="py-2.5 px-5 rounded-xl bg-[#06142a] hover:bg-[#092248] text-slate-200 font-semibold text-xs border border-[#163a70] transition flex items-center gap-2"
+                  className="py-2.5 px-5 rounded-xl bg-[#06142a] hover:bg-[#092248] text-slate-200 font-semibold text-xs border border-[#163a70] transition flex items-center gap-2 cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
                   Retry Scenario
                 </button>
                 <button
                   onClick={() => setActiveScenario(null)}
-                  className="py-2.5 px-5 rounded-xl bg-[#0a1e3d] hover:bg-[#0f2d59] text-white font-semibold text-xs border border-[#163a70] transition flex items-center gap-2"
+                  className="py-2.5 px-5 rounded-xl bg-[#0a1e3d] hover:bg-[#0f2d59] text-white font-semibold text-xs border border-[#163a70] transition flex items-center gap-2 cursor-pointer"
                 >
                   <span>More Scenarios</span>
                 </button>
                 <button
                   onClick={onNavigateToDashboard}
-                  className="py-2.5 px-6 rounded-xl bg-[#c8102e] hover:bg-[#a80c25] text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-[#c8102e]/30"
+                  className="py-2.5 px-6 rounded-xl bg-[#c8102e] hover:bg-[#a80c25] text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-[#c8102e]/30 cursor-pointer"
                 >
                   <Award className="w-4 h-4" />
                   View Cadet Dashboard
@@ -439,9 +639,58 @@ export const ScenariosView: React.FC<ScenariosViewProps> = ({ onNavigateToDashbo
             </div>
           )}
         </div>
+      ) : viewMode === 'history' ? (
+        /* Full Decision History Log View */
+        <ScenarioHistoryLog
+          entries={historyLogs}
+          onSelectScenario={handleSelectScenarioFromHistory}
+          onDeleteEntry={handleDeleteHistoryEntry}
+          onClearAll={handleClearAllHistory}
+          onBackToMissions={() => setViewMode('board')}
+        />
       ) : (
         /* Scenario Selection Grid */
         <div className="space-y-8">
+          {/* Top Mode Segmented Switcher */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[#0a1e3d] border border-[#163a70] shadow-md">
+            <div className="flex items-center gap-2 bg-[#06142a] p-1 rounded-xl border border-[#163a70]">
+              <button
+                onClick={() => setViewMode('board')}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  viewMode === 'board'
+                    ? 'bg-[#c8102e] text-white shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-[#002855]'
+                }`}
+              >
+                <Compass className="w-4 h-4 text-[#ffc72c]" />
+                <span>Mission Simulator</span>
+              </button>
+
+              <button
+                id="scenarios-history-log-btn"
+                onClick={() => setViewMode('history')}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  (viewMode as string) === 'history'
+                    ? 'bg-[#c8102e] text-white shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-[#002855]'
+                }`}
+              >
+                <BookOpen className="w-4 h-4 text-[#ffc72c]" />
+                <span>Decision History Log</span>
+                {historyLogs.length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-[#ffc72c] text-[#002855] font-black">
+                    {historyLogs.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Local Storage Active</span>
+            </div>
+          </div>
+
           {/* Header Banner */}
           <div className="relative rounded-3xl overflow-hidden border border-[#163a70] bg-[#0a1e3d] shadow-2xl p-6 sm:p-8">
             <div className="max-w-2xl space-y-3">

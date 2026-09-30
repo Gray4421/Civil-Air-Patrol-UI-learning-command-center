@@ -10,19 +10,32 @@ import { DrillSimulatorView } from './components/DrillSimulatorView';
 import { UniformInspectorView } from './components/UniformInspectorView';
 import { SuperChartRanksView } from './components/SuperChartRanksView';
 import { CadetOathView } from './components/CadetOathView';
+import { LessonPlanView } from './components/LessonPlanView';
 import { CapEmblem } from './components/CapEmblem';
+import { CadetRankId } from './types';
 
 const AppContent: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('scenarios');
+  const [lessonPlanRankId, setLessonPlanRankId] = useState<CadetRankId | undefined>(undefined);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
   const { isGoogleModalOpen, setIsGoogleModalOpen, isOnboardingModalOpen } = useAuth();
+
+  const handleNavigateToLessonPlan = (rankId?: CadetRankId) => {
+    if (rankId) setLessonPlanRankId(rankId);
+    setCurrentTab('lessonplan');
+  };
 
   return (
     <div className="min-h-screen bg-[#030914] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,40,85,0.3),rgba(3,9,20,1))] text-slate-100 flex flex-col font-sans selection:bg-[#c8102e] selection:text-white">
       {/* Top Navigation */}
       <Navbar
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={(tab) => {
+          if (tab === 'lessonplan') {
+            setLessonPlanRankId(undefined); // use default/enrolled unless overridden
+          }
+          setCurrentTab(tab);
+        }}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
       />
 
@@ -31,10 +44,20 @@ const AppContent: React.FC = () => {
         {currentTab === 'scenarios' && (
           <ScenariosView onNavigateToDashboard={() => setCurrentTab('dashboard')} />
         )}
-        {currentTab === 'dashboard' && <DashboardView />}
+        {currentTab === 'dashboard' && (
+          <DashboardView onNavigateToLessonPlan={handleNavigateToLessonPlan} />
+        )}
+        {currentTab === 'lessonplan' && (
+          <LessonPlanView
+            onNavigateTab={setCurrentTab}
+            selectedRankId={lessonPlanRankId}
+          />
+        )}
         {currentTab === 'drill' && <DrillSimulatorView />}
         {currentTab === 'uniform' && <UniformInspectorView />}
-        {currentTab === 'superchart' && <SuperChartRanksView />}
+        {currentTab === 'superchart' && (
+          <SuperChartRanksView onNavigateToLessonPlan={handleNavigateToLessonPlan} />
+        )}
         {currentTab === 'oath' && <CadetOathView />}
       </main>
 

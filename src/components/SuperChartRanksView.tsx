@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CADET_RANKS } from '../data/cadetData';
-import { CadetRank } from '../types';
+import { CadetRank, CadetRankId } from '../types';
 import { 
   Layers, 
   Award, 
@@ -11,10 +11,16 @@ import {
   Activity, 
   ShieldCheck, 
   ChevronRight,
-  ExternalLink 
+  ExternalLink,
+  GraduationCap,
+  ArrowRight
 } from 'lucide-react';
 
-export const SuperChartRanksView: React.FC = () => {
+interface SuperChartRanksViewProps {
+  onNavigateToLessonPlan?: (rankId: CadetRankId) => void;
+}
+
+export const SuperChartRanksView: React.FC<SuperChartRanksViewProps> = ({ onNavigateToLessonPlan }) => {
   const [selectedPhase, setSelectedPhase] = useState<number>(1);
   const [activeRank, setActiveRank] = useState<CadetRank>(CADET_RANKS[1]); // C/Amn default
 
@@ -215,6 +221,26 @@ export const SuperChartRanksView: React.FC = () => {
               <strong className="text-white">Manners of Address: </strong>
               "{activeRank.addressTerm}"
             </div>
+          </div>
+
+          {/* Action to view tailored lesson plan */}
+          <div className="p-4 rounded-2xl bg-[#002855]/70 border border-[#163a70] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                <GraduationCap className="w-4 h-4 text-[#ffc72c]" />
+                <span>Want to advance from {activeRank.abbreviation}?</span>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                Inspect the regulation-grounded 4-week study syllabus, required textbooks, and level-up requirements.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigateToLessonPlan?.(activeRank.id)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#c8102e] hover:bg-[#a80c25] text-white text-xs font-bold transition shadow-md shadow-[#c8102e]/30 cursor-pointer flex-shrink-0"
+            >
+              <span>View Level-Up Lesson Plan</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       )}

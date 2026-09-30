@@ -74,6 +74,38 @@ export interface ScenarioResult {
   earnedHonorCredit: boolean;
 }
 
+export interface ScenarioStageDecision {
+  stageIndex: number;
+  stageTitle: string;
+  promptQuestion: string;
+  selectedOptionId: string;
+  selectedOptionText: string;
+  isBestCourse: boolean;
+  scoreModifier: number;
+  outcomeText: string;
+  referenceQuote: string;
+  coreValueDemonstrated?: string;
+}
+
+export interface ScenarioHistoryEntry {
+  id: string;
+  scenarioId: string;
+  scenarioTitle: string;
+  scenarioCategory: string;
+  difficulty: 'Basic' | 'Intermediate' | 'Advanced';
+  completedAt: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  bestChoicesCount: number;
+  totalStages: number;
+  passed: boolean;
+  earnedHonorCredit: boolean;
+  cadetName?: string;
+  cadetRank?: string;
+  decisions: ScenarioStageDecision[];
+}
+
 export interface CadetGoal {
   id: string;
   title: string;

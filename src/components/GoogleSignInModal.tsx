@@ -184,7 +184,7 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({ isOpen, on
           <div className="pt-2 border-t border-slate-100 flex items-start gap-2 text-[11px] text-slate-500 leading-relaxed">
             <Shield className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
             <span>
-              Civil Air Patrol Cadet Portal safely connects with your Google account. Your personnel record, achievements, and training hours remain private to your cadet account.
+              Civil Air Patrol Cadet Portal safely connects with your Google account. Your session and scenario history are securely stored in your browser with automatic login enabled for future visits.
             </span>
           </div>
         </div>

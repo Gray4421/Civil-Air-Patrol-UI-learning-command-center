@@ -15,11 +15,17 @@ import {
   Hash,
   Compass,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  GraduationCap
 } from 'lucide-react';
 import { CapEmblem } from './CapEmblem';
+import { CadetRankId } from '../types';
 
-export const DashboardView: React.FC = () => {
+interface DashboardViewProps {
+  onNavigateToLessonPlan?: (rankId?: CadetRankId) => void;
+}
+
+export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateToLessonPlan }) => {
   const { 
     user, 
     isAuthenticated,
@@ -213,9 +219,19 @@ export const DashboardView: React.FC = () => {
           </div>
 
           {nextRank && (
-            <p className="text-[11px] text-slate-300">
-              Complete decision scenarios, master drill movements, and uphold Civil Air Patrol Core Values to earn promotion endorsement.
-            </p>
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <p className="text-[11px] text-slate-300">
+                Complete decision scenarios, master drill movements, and study regulation requirements to earn promotion to {nextRank.abbreviation}.
+              </p>
+              <button
+                onClick={() => onNavigateToLessonPlan?.(currentRank.id)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#c8102e] hover:bg-[#a80c25] text-white font-bold transition flex-shrink-0 cursor-pointer shadow-md shadow-[#c8102e]/30"
+              >
+                <GraduationCap className="w-4 h-4 text-[#ffc72c]" />
+                <span>View Tailored Level-Up Lesson Plan</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
         </div>
       </div>

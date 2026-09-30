@@ -11,7 +11,7 @@ interface AuthContextType {
   isOnboardingModalOpen: boolean;
   setIsOnboardingModalOpen: (open: boolean) => void;
   loginWithGoogle: (email: string, name?: string, avatarUrl?: string) => void;
-  logoutGoogle: () => void;
+  logoutGoogle: (forgetDevice?: boolean) => void;
   completeOnboarding: (params: {
     fullName: string;
     capId: string;
@@ -53,6 +53,9 @@ interface AuthContextType {
 
 const STORAGE_KEY = 'cap_cadet_active_session';
 const GOOGLE_ACCOUNTS_KEY = 'cap_cadet_google_accounts';
+const LAST_ACCOUNT_KEY = 'cap_cadet_last_account';
+const HAS_LOGGED_IN_KEY = 'cap_cadet_has_logged_in';
+const LAST_EMAIL_KEY = 'cap_cadet_last_logged_in_email';
 
 const DEFAULT_FIRST_YEAR = {
   stayedOneYear: false,
@@ -105,27 +108,61 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
 
-  // Load active user session on mount
+  // Load active user session on mount (Auto-login if logged in in the past)
   useEffect(() => {
     try {
+      let candidate: UserAccount | null = null;
       const stored = localStorage.getItem(STORAGE_KEY);
+      
       if (stored) {
-        const parsed = JSON.parse(stored) as UserAccount;
+        candidate = JSON.parse(stored) as UserAccount;
+      } else {
+        // Auto-login: If the cadet has logged in in the past, retrieve their remembered account
+        const lastUserStr = localStorage.getItem(LAST_ACCOUNT_KEY);
+        if (lastUserStr) {
+          candidate = JSON.parse(lastUserStr) as UserAccount;
+        } else {
+          // Check saved accounts in GOOGLE_ACCOUNTS_KEY
+          const savedGoogle = localStorage.getItem(GOOGLE_ACCOUNTS_KEY);
+          if (savedGoogle) {
+            const accounts: Record<string, UserAccount> = JSON.parse(savedGoogle);
+            const lastEmail = localStorage.getItem(LAST_EMAIL_KEY)?.toLowerCase();
+            if (lastEmail && accounts[lastEmail]) {
+              candidate = accounts[lastEmail];
+            } else {
+              const accountList = Object.values(accounts);
+              if (accountList.length > 0) {
+                candidate = accountList[0];
+              }
+            }
+          }
+        }
+      }
+
+      if (candidate) {
         // Purge any previously fabricated names (e.g. Jordan William, Jordan, jwilliam4421)
         if (
-          parsed.fullName === 'Jordan William' ||
-          parsed.fullName?.toLowerCase().includes('jordan') ||
-          parsed.fullName?.toLowerCase().includes('jordin') ||
-          parsed.fullName === 'jwilliam4421'
+          candidate.fullName === 'Jordan William' ||
+          candidate.fullName?.toLowerCase().includes('jordan') ||
+          candidate.fullName?.toLowerCase().includes('jordin') ||
+          candidate.fullName === 'jwilliam4421'
         ) {
-          parsed.fullName = '';
-          parsed.callsign = '';
-          parsed.onboardingCompleted = false;
+          candidate.fullName = '';
+          candidate.callsign = '';
+          candidate.onboardingCompleted = false;
         }
 
-        setUser(parsed);
+        setUser(candidate);
+        // Persist session so cadet remains logged in
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(candidate));
+        localStorage.setItem(LAST_ACCOUNT_KEY, JSON.stringify(candidate));
+        localStorage.setItem(HAS_LOGGED_IN_KEY, 'true');
+        if (candidate.email) {
+          localStorage.setItem(LAST_EMAIL_KEY, candidate.email);
+        }
+
         // If logged in with Google but onboarding was never finished or name is empty, open onboarding modal
-        if (!parsed.fullName || (parsed.isGoogleAuth && !parsed.onboardingCompleted)) {
+        if (!candidate.fullName || (candidate.isGoogleAuth && !candidate.onboardingCompleted)) {
           setIsOnboardingModalOpen(true);
         }
       }
@@ -138,6 +175,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     if (user) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      localStorage.setItem(LAST_ACCOUNT_KEY, JSON.stringify(user));
+      localStorage.setItem(HAS_LOGGED_IN_KEY, 'true');
+      if (user.email) {
+        localStorage.setItem(LAST_EMAIL_KEY, user.email);
+      }
       if (user.isGoogleAuth) {
         try {
           const saved = localStorage.getItem(GOOGLE_ACCOUNTS_KEY);
@@ -219,9 +261,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsOnboardingModalOpen(true);
   };
 
-  const logoutGoogle = () => {
+  const logoutGoogle = (forgetDevice = false) => {
     setUser(null);
     localStorage.removeItem(STORAGE_KEY);
+    if (forgetDevice) {
+      localStorage.removeItem(LAST_ACCOUNT_KEY);
+      localStorage.removeItem(HAS_LOGGED_IN_KEY);
+      localStorage.removeItem(LAST_EMAIL_KEY);
+    }
   };
 
   const completeOnboarding = ({

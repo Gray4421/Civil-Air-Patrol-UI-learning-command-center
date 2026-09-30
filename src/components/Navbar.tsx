@@ -10,10 +10,11 @@ import {
   BookOpen, 
   User as UserIcon, 
   Sparkles,
-  Layers
+  Layers,
+  GraduationCap
 } from 'lucide-react';
 
-export type NavTab = 'scenarios' | 'dashboard' | 'drill' | 'uniform' | 'superchart' | 'oath';
+export type NavTab = 'scenarios' | 'dashboard' | 'lessonplan' | 'drill' | 'uniform' | 'superchart' | 'oath';
 
 interface NavbarProps {
   currentTab: NavTab;
@@ -109,6 +110,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {Object.keys(user.scenarioResults).length}
               </span>
             )}
+          </button>
+
+          <button
+            id="nav-tab-lessonplan"
+            onClick={() => onSelectTab('lessonplan')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              currentTab === 'lessonplan'
+                ? 'bg-[#c8102e] text-white shadow-md shadow-[#c8102e]/30 font-bold border border-[#e2304d]'
+                : 'text-slate-200 hover:text-white hover:bg-[#0a1e3d] border border-transparent'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span>Lesson Plan</span>
           </button>
 
           <button

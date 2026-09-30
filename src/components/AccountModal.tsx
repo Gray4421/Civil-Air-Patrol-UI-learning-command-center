@@ -212,20 +212,29 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose }) =
                     <div className="text-[11px] text-slate-300">
                       {user?.email || 'No email linked'}
                     </div>
+                    {user?.isGoogleAuth && (
+                      <div className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Auto-login enabled (Saved on this device)</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {user?.isGoogleAuth ? (
-                  <button
-                    onClick={() => {
-                      logoutGoogle();
-                      onClose();
-                    }}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-800 text-red-200 text-xs font-medium transition cursor-pointer"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        logoutGoogle(false);
+                        onClose();
+                      }}
+                      title="Signs out of this session while remembering account for auto-login"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-800 text-red-200 text-xs font-medium transition cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => {
